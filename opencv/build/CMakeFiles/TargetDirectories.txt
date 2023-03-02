@@ -1,0 +1,3 @@
+/root/BaiduAI_Car/smart-car/opencv/build/CMakeFiles/rebuild_cache.dir
+/root/BaiduAI_Car/smart-car/opencv/build/CMakeFiles/fps_test.dir
+/root/BaiduAI_Car/smart-car/opencv/build/CMakeFiles/edit_cache.dir

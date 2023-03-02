@@ -1,0 +1,3 @@
+/root/BaiduAI_Car/smart-car/edgeboard/build/CMakeFiles/rebuild_cache.dir
+/root/BaiduAI_Car/smart-car/edgeboard/build/CMakeFiles/icar.dir
+/root/BaiduAI_Car/smart-car/edgeboard/build/CMakeFiles/edit_cache.dir

@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/root/BaiduAI_Car/smart-car/edgeboard/build",
+  "command": "/usr/bin/c++   -I/root/BaiduAI_Car/smart-car/edgeboard/src/include -I/root/BaiduAI_Car/smart-car/edgeboard/src/config -I/root/BaiduAI_Car/smart-car/edgeboard/src/src -I/root/BaiduAI_Car/smart-car/edgeboard/src/tool -I/usr/include/glib-2.0 -I/usr/lib/aarch64-linux-gnu/glib-2.0/include -isystem /usr/local/include -isystem /usr/local/include/opencv -I/usr/local/include/libserial -I/usr/local/include/ppnc -I/usr/local/include/onnx  -O3 -Wall -mcpu=native -flto -pthread   -std=gnu++1z -o CMakeFiles/icar.dir/src/icar.cpp.o -c /root/BaiduAI_Car/smart-car/edgeboard/src/src/icar.cpp",
+  "file": "/root/BaiduAI_Car/smart-car/edgeboard/src/src/icar.cpp"
+}
+]
