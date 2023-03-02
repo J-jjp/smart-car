@@ -126,7 +126,7 @@ public:
                     }
                 }
             }
-            if (countSes > 10)
+            if (countSes > 3)
             {
                 countExit = 0;
                 step = Step::stop;

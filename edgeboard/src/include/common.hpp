@@ -112,7 +112,7 @@ void savePicture(Mat &image)
     string img_path = "../res/samples/train/";
     name = img_path + to_string(counter) + ".jpg";
     imwrite(name, image);
-    std::cout<<"第"<<counter<<"张\t";
+    std::cout<<"第"<<counter<<"张\t"<<std::endl;
 }
 
 //--------------------------------------------------[公共方法]----------------------------------------------------

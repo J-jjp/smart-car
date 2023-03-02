@@ -126,8 +126,8 @@ public:
         // std::cout<<"\tp2"<<params.runP2;
         // std::cout<<"\td"<<params.turnD1<<std::endl;
         if(speed==params.speedDown){
-            params.runP = abs(error) * params.runP4 + params.runP3;
-            int pwmDiff = (error * params.runP) + (error - errorLast) * params.turnD2;
+            params.runP = abs(error) * params.runP2;
+            int pwmDiff = (error * params.runP) + (error - errorLast) * params.turnD3;
             if(abs(pwmDiff)>300){
                 if(pwmDiff>0)
                     pwmDiff=300;
@@ -136,21 +136,33 @@ public:
             }
              servoPwm = (uint16_t)(PWMSERVOMID - pwmDiff);
         }
-        else{ 
-            params.runP = abs(error) * params.runP2 + params.runP1;
+        else if(speed==params.speedHigh){ 
+            params.runP = params.runP1;
             int pwmDiff = (error * params.runP) + (error - errorLast) * params.turnD1;
-            if(abs(pwmDiff)>450){
+            if(abs(pwmDiff)>320){
+                speed=params.speedLow-0.3;
                 if(pwmDiff>0)
-                    pwmDiff=450;
+                    pwmDiff=320;
                 else
-                    pwmDiff=-450;
+                    pwmDiff=-320;
+            }
+            servoPwm = (uint16_t)(PWMSERVOMID - pwmDiff); 
+        }
+        else{
+            params.runP = abs(error) *  params.runP4 + params.runP3;
+            int pwmDiff = (error * params.runP) + (error - errorLast) * params.turnD2;
+            if(abs(pwmDiff)>320){
+                speed=params.speedLow-0.3;
+                if(pwmDiff>0)
+                    pwmDiff=320;
+                else
+                    pwmDiff=-320;
             }
             servoPwm = (uint16_t)(PWMSERVOMID - pwmDiff); 
         }
         //std::cout<<servoPwm<<std::endl;
         errp_ppre=errorLast;
         errorLast = error;
-        
     }
 
     /**
@@ -185,11 +197,16 @@ public:
                 countShift = controlLow;
                 return;
             }
-            if (abs(control.sigmaCenter) <100.0)
+            if (abs(control.sigmaCenter) <150.0)
             {
                 countShift++;
                 if (countShift > controlHigh)
                     countShift = controlHigh;
+            }
+            else if (abs(control.sigmaCenter)>2000.0)
+            {
+                speed = params.speedLow-0.4;
+                return;
             }
             else
             {
@@ -238,17 +255,15 @@ public:
 
         errors.clear();  // 清空误差列表以便重新收集数据
     }
-    void speed_control(float target_speed,float real_speed){
+    float speed_control(float target_speed,float new_speed){
         if(target_speed==params.speedHigh){
-            if(transform_speed>0){
-                real_speed=params.up_speed*up_speed;
-            }
-            else{
-                real_speed=params.up_speed;
-            }
+            float real_speed=new_speed*params.up_speed;
+            if(real_speed>params.speedHigh)
+                real_speed=params.speedHigh;
+            return real_speed;
         }
         else{
-
+            return target_speed;
         }
     }
 };

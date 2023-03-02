@@ -50,9 +50,12 @@ void thread_ai(std::shared_ptr<Detection> detection1){
   while(1){
     //std::cout<<"进去"<<std::endl;
     if(start_ai){
-    detection1->inference(ai_image);
-    //std::cout<<"进去2"<<std::endl;
+    mut.lock();
+    Mat ii=ai_image.clone();
     start_ai=false;
+    mut.unlock();
+    detection1->inference(ii);
+    //std::cout<<"进去2"<<std::endl;
     }
     else{
        waitKey(1);
@@ -98,7 +101,7 @@ int main(int argc, char const *argv[]) {
   ControlCenter ctrlCenter; // 控制中心计算类
   Display display(2);       // 初始化UI显示窗口
   VideoCapture capture;     // Opencv相机类
-
+  float speed=0.8;
   // 目标检测类(AI模型文件)
   shared_ptr<Detection> detection = make_shared<Detection>(motion.params.model);
   detection->score = motion.params.score; // AI检测置信度
@@ -169,14 +172,14 @@ int main(int argc, char const *argv[]) {
       flip(img, img, -1);
     // //[02] 图像预处理
     Mat imgCorrect = img.clone();         // 图像矫正
+    mut.lock();
     ai_image=img.clone();
+    start_ai=true;
+    mut.unlock();
     Mat imgBinary;
     imgBinary = preprocess.binaryzation(img); // 图像二值化
     // cv::warpPerspective(imgBinary, imgBinary, H_inv, img.size());
     // cv::warpPerspective(imgCorrect, imgCorrect, H_inv, img.size());  
-    mut.lock();
-    start_ai=true;
-    mut.unlock();
     // //[03] 启动AI推理
     if(motion.params.debug)
       detection->inference(img);
@@ -185,6 +188,7 @@ int main(int argc, char const *argv[]) {
     tracking.rowCutUp = motion.params.rowCutUp; // 图像顶部切行（前瞻距离）
     tracking.rowCutBottom = motion.params.rowCutBottom; // 图像底部切行（盲区距离）
     tracking.trackRecognition(imgBinary);
+    // // Mat ii=imgCorrect.clone();
     if (0) // 综合显示调试UI窗口
     {
       Mat imgTrack = imgCorrect.clone();
@@ -197,8 +201,8 @@ int main(int argc, char const *argv[]) {
     if (motion.params.parking) {
       if (parking.process(detection->results)) {
         scene = Scene::ParkingScene;
-        if (parking.countExit > 15) {
-          //uart->carControl(0, PWMSERVOMID); // 控制车辆停止运动
+        if (parking.countExit > 5) {
+          uart->carControl(0, PWMSERVOMID); // 控制车辆停止运动
           sleep(1);
           printf("-----> System Exit!!! <-----\n");
           exit(0); // 程序退出
@@ -232,9 +236,20 @@ int main(int argc, char const *argv[]) {
       else
         scene = Scene::NormalScene;
     }
+    // Mat ii=imgCorrect.clone();
+    //      ctrlCenter.drawImage(tracking,
+    //                         ii); 
+    // savePicture(ii);
   //elements(tracking);
     //[12] 车辆控制中心拟合
-    ctrlCenter.fitting(tracking,motion.params.prospect,imgCorrect,scene);
+    float prospect=0;
+    if(speed==motion.params.speedHigh)
+      prospect= motion.params.prospect;
+    else if(scene ==Scene::RingScene)
+      prospect= motion.params.prospect+0.2;
+    else
+      prospect= motion.params.prospect+0.1;
+    ctrlCenter.fitting(tracking,prospect,imgCorrect,scene);
     // if (scene != Scene::RescueScene) {
     //   if (ctrlCenter.derailmentCheck(tracking)) // 车辆冲出赛道检测（保护车辆）
     //   {
@@ -253,19 +268,24 @@ int main(int argc, char const *argv[]) {
     else if (scene == Scene::RescueScene && rescue.carExitting) // 倒车出库
       motion.speed = -motion.params.speedDown;
     else if(scene == Scene::DangerScene)
-      motion.speed = motion.params.speedDown;
+      motion.speed = motion.params.speedDown-0.1;
+    else if(scene ==Scene::RingScene)
+      motion.speed = motion.params.speedLow-0.3;
     else if (scene == Scene::RescueScene) // 减速
       motion.speedCtrl(true, true, ctrlCenter);
     else
       motion.speedCtrl(true, false, ctrlCenter); // 车速控制
+    speed=motion.speed_control(motion.speed,speed);
     motion.poseCtrl(ctrlCenter.controlCenter); // 姿态控制（舵机
     // mut.lock();
     // start_uart=true;
     // mut.unlock();
-    uart->carControl(motion.speed, motion.servoPwm); // 串口通信控制车辆
-    // if(motion.speed == -motion.params.speedDown){
-    //   waitKey(10);
-    // }
+    std::cout<<"速度"<<speed;
+    uart->carControl(speed, motion.servoPwm); // 串口通信控制车辆
+    //std::cout<<"速度"<<
+    if(motion.speed == -motion.params.speedDown){
+      waitKey(8);
+    }
     //std::cout<<motion.speed<<"\t";
     //[15] 状态复位
     // if (sceneLast != scene) {
@@ -341,11 +361,11 @@ int main(int argc, char const *argv[]) {
                            imgCorrect); // 图像绘制路径计算结果（控制中心）
       display.setNewWindow(1, "Ctrl", imgCorrect);
       display.show(); // 显示综合绘图
-      waitKey(10);    // 等待显示
+      waitKey(8);    // 等待显示
     }
-    detection->drawBox(imgCorrect); 
-    ctrlCenter.drawImage(tracking,
-                           imgCorrect); // 图像绘制路径计算结果（控制中心
+    // detection->drawBox(imgCorrect); 
+    // ctrlCenter.drawImage(tracking,
+    //                        imgCorrect); // 图像绘制路径计算结果（控制中心
     //std::cout<<scene<<std::endl;
     sceneLast = scene; // 记录当前状态
     // if (scene == Scene::DangerScene)

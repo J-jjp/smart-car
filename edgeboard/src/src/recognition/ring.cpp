@@ -38,6 +38,8 @@ public:
     int count=0;
     int k=0;
     int finish=0;
+    POINT loseleft;
+    POINT loseright;
     /**
      * @brief 环岛识别初始化|复位
      *
@@ -48,6 +50,7 @@ public:
         RingStep ringStep = RingStep::None;     // 环岛处理阶段
         int rowRepairLine = 0;                  // 用于环补线的点（行号）
         int colRepairLine = 0;                  // 用于环补线的点（列号
+        ringcircle=false;
         countWide = 0;
         withi1=0;
         withi2 =0;
@@ -63,11 +66,11 @@ public:
      */
     bool process(Tracking &track, Mat &imagePath)
     {
-        // if (counterShield < 40)// 确保在环岛检测被触发后的一段时间内不会再次触发
-        // {
-        //     counterShield++;
-        //     return false;
-        // }
+        if (counterShield < 60)// 确保在环岛检测被触发后的一段时间内不会再次触发
+        {
+            counterShield++;
+            return false;
+        }
         bool ringEnable = false;                                 // 判环标志
         RingType ringTypeTemp = RingType::RingNone;              // 环岛类型：临时变量
         _index = 0;
@@ -77,36 +80,44 @@ public:
         // 判环
         int with=0;
         bool rightpoint=false;
+        bool rightpoint2=false;
         //从下往上搜索
         for (int i = 1; i < track.widthBlock.size()*2/3; ++i)
         {   
             //std::cout<<"\tle:"<<track.stdevLeft<<"\tri:"<<track.stdevRight<<std::endl;
             //上行宽度大于下行，并且宽度大于图像列宽0.6并且行大于30，左点集标准差大于120，右点集标准差小于50，判断赛道平直程度
-            if (track.widthBlock[i].y - track.widthBlock[i-2].y>30&&
-            ((track.stdevLeft>170 &&track.stdevRight<30)||(track.stdevRight>150&&track.stdevLeft<40))&&(ringStep == RingStep::None||ringStep == RingStep::Entering)) // 搜索突然变宽的路径行数
+            if (track.widthBlock[i].y - track.widthBlock[i-2].y>30&&((track.stdevLeft>150 &&track.stdevRight<40)||(track.stdevRight>150&&track.stdevLeft<40))
+            &&(ringStep == RingStep::None||ringStep == RingStep::Entering)) // 搜索突然变宽的路径行数
             {
-                if(track.pointsEdgeRight[i].y>track.pointsEdgeRight[i-1].y||track.pointsEdgeLeft[i].y<track.pointsEdgeLeft[i-1].y){
                     std::cout<<"进去了"<<std::endl;
                     count=0;
                     rightpoint=true;
                     withi1=i;
+                    // if(ringStep == RingStep::Entering&&track.widthBlock[i].x<220){
+                    //     rightpoint=false;
+                    //     break;
+                    // }
                     countWide++;
                     for (int i = 0; i < COLSIMAGE; i++)
                     {
                         circle(imagePath, Point(i,track.widthBlock[withi1].x), 2,
                             Scalar(255, 255, 255), -1); // 红色点
                     }
-                    for(int ii = withi1+1; ii < track.widthBlock.size(); ii++){        //从找到角点下往上搜索最小点
-                        if((track.pointsEdgeRight[ii+1].y<track.pointsEdgeRight[ii-10].y&&track.pointsEdgeRight[ii].y<track.pointsEdgeRight[ii+10].y)||
-                        (track.pointsEdgeLeft[ii+1].y>track.pointsEdgeLeft[ii-10].y&&track.pointsEdgeLeft[ii].y>track.pointsEdgeLeft[ii+10].y)){
+                    for(int ii = withi1+1; ii < track.widthBlock.size()-10; ii++){        //从找到角点下往上搜索最小点
+                        if((track.pointsEdgeRight[ii].y<track.pointsEdgeRight[ii-10].y&&track.pointsEdgeRight[ii].y<track.pointsEdgeRight[ii+10].y)||
+                        (track.pointsEdgeLeft[ii].y>track.pointsEdgeLeft[ii-10].y&&track.pointsEdgeLeft[ii].y>track.pointsEdgeLeft[ii+10].y)){
                             ringStep = RingStep::Entering;
                             withi2=ii;
+                            rightpoint2=true;
+                            for (int i = 0; i < COLSIMAGE; i++)
+                            {
+                                circle(imagePath, Point(i,track.widthBlock[withi2].x), 2,
+                                    Scalar(0, 0, 0), -1); // 红色点
+                            }
                             break;
                         }
-                        
                     }
                     break;
-                }
             }
             else{
                 rightpoint=false;
@@ -114,20 +125,36 @@ public:
         }
         //std::cout<<rowYendStraightside<<std::endl;
                     // [1] 入环判断 countwide计数器大于五，并且存在岔路点，则认为入环
-        if (ringStep == RingStep::None||ringStep  == RingStep::Entering&& withi1>1)
+        if ((ringStep == RingStep::None&&countWide>3)||(rightpoint==true||ringStep  == RingStep::Entering))
         {
+            if(ringStep  == RingStep::Entering&&rightpoint==false){
+            for(int ii=10;ii < track.widthBlock.size()-30; ii++){
+                if((track.pointsEdgeRight[ii].y<track.pointsEdgeRight[ii-10].y&&track.pointsEdgeRight[ii].y<track.pointsEdgeRight[ii+10].y)||
+                (track.pointsEdgeLeft[ii].y>track.pointsEdgeLeft[ii-10].y&&track.pointsEdgeLeft[ii].y>track.pointsEdgeLeft[ii+10].y)){
+                    ringStep = RingStep::Entering;
+                    withi2=ii;
+                    rightpoint2=true;
+                                                for (int i = 0; i < COLSIMAGE; i++)
+                            {
+                                circle(imagePath, Point(i,track.widthBlock[withi2].x), 2,
+                                    Scalar(255, 0, 0), -1); // 红色点
+                            }
+                    break;
+                    }
+                }
+            }
             //std::cout<<"环岛";
             if (ringTypeTemp == RingType::RingNone) // 环岛方向判定
             {
-                if (track.stdevRight<50)
+                if (track.stdevRight<50&&track.stdevLeft>170)
                 {
                     std::cout<<"左环岛";
                     ringTypeTemp = RingType::RingLeft;            // 环岛类型：左入环
-                    if(ringStep  == RingStep::Entering)
+                    if(ringStep  == RingStep::Entering&&ringType==RingType::RingNone)
                         ringType=ringTypeTemp;  
                 }
                 //如果存在前第5个点右集col小于当前col，说明有向右拐的趋向
-                else if (track.stdevLeft<50)
+                else if (track.stdevLeft<50&&track.stdevRight>170&&ringType==RingType::RingNone)
                 {
                     std::cout<<"右环岛";
                     ringTypeTemp = RingType::RingRight;            // 环岛类型：右入环
@@ -135,64 +162,88 @@ public:
                         ringType= ringTypeTemp;  
                 }
             }
-            if(ringType==RingType::RingRight&&ringStep == RingStep::None){
+            if(ringTypeTemp==RingType::RingRight||ringType==RingType::RingRight&&ringStep == RingStep::None&&rightpoint==true){
                 std::cout<<"进去补1线"<<std::endl;
                 float k=(float)(track.pointsEdgeRight[0].y-track.pointsEdgeRight[withi1 - 10].y)/(float)(track.pointsEdgeRight[0].x-track.pointsEdgeRight[withi1 - 10].x);
                 for(int n=withi1-10;n<track.pointsEdgeRight.size();n++){
                     track.pointsEdgeRight[n].y=(int)(track.pointsEdgeRight[withi1-11].y-k*(n-withi1+10));           //进环前补线
                 }
             }
-            else if(ringType==RingType::RingRight&&ringStep == RingStep::Entering){
+            else if(ringType==RingType::RingRight&&ringStep == RingStep::Entering&&rightpoint2==true){
                  std::cout<<"进去补2线"<<std::endl;
-                float k=(float)(track.pointsEdgeRight[0].y-track.pointsEdgeRight[withi2].y)/(float)(track.pointsEdgeRight[0].x-track.pointsEdgeRight[withi2].x);
-                for(int n=withi1-2;n<withi2;n++){
-                    track.pointsEdgeRight[n].y=(int)(track.pointsEdgeRight[withi1-3].y-k*(n-withi1+2));
+                 if(rightpoint==false){
+                    std::cout<<"没有";
+                    for(int n=withi2;n>withi1;n--){
+                        track.pointsEdgeRight[n].y=(int)track.pointsEdgeRight[withi2].y;
+                    }
+                 }
+                else{
+                    float k=(float)(track.pointsEdgeRight[withi2].y-track.pointsEdgeRight[0].y)/(float)withi2;
+                    for(int n=withi1-5;n>withi2+5;n++){
+                        int c=(int)(k*(float)(n-withi1+5));
+                        track.pointsEdgeRight[n].y=track.pointsEdgeRight[withi1-5].y+c;
+                        }
                 }
             }
-            if(ringType==RingType::RingLeft&&ringStep == RingStep::None){
+            if((ringTypeTemp==RingType::RingLeft||ringType==RingType::RingLeft)&&ringStep == RingStep::None&&rightpoint==true){
                 std::cout<<"进去补1线"<<std::endl;
                 float k=(float)(track.pointsEdgeLeft[0].y-track.pointsEdgeLeft[withi1 - 10].y)/(float)(track.pointsEdgeLeft[0].x-track.pointsEdgeLeft[withi1 - 10].x);
                 for(int n=withi1-10;n<track.pointsEdgeLeft.size();n++){
                     track.pointsEdgeLeft[n].y=(int)(track.pointsEdgeLeft[withi1-11].y-k*(n-withi1+10));           //进环前补线
                 }
             }
-            else if(ringType==RingType::RingLeft&&ringStep == RingStep::Entering){
+            else if(ringType==RingType::RingLeft&&ringStep == RingStep::Entering&&rightpoint2==true){
                  std::cout<<"进去补2线"<<std::endl;
-                float k=(float)(track.pointsEdgeLeft[0].y-track.pointsEdgeLeft[withi2].y)/(float)(track.pointsEdgeLeft[0].x-track.pointsEdgeLeft[withi2].x);
-                for(int n=withi1-2;n<withi2;n++){
-                    track.pointsEdgeLeft[n].y=(int)(track.pointsEdgeLeft[withi1-3].y-k*(n-withi1+2));
+                if(rightpoint==false){
+                    std::cout<<"没有";
+                    for(int n=withi2;n>withi1;n--){
+                        track.pointsEdgeLeft[n].y=(int)track.pointsEdgeLeft[withi2].y;
+                    }
+                 }
+                else{
+                    float k=(float)(track.pointsEdgeLeft[withi2].y-track.pointsEdgeLeft[0].y)/(float)withi2;
+                    for(int n=withi1-5;n<withi2+5;n++){
+                        int c=(int)(k*(float)(n-withi1+5));
+                        track.pointsEdgeLeft[n].y=track.pointsEdgeLeft[withi1-5].y+c;
+                    }
                 }
             }
-            //std::cout<<ringTypeTemp<<std::endl;;
+            //std::cout<<ringTypeTemp<<std::endl;;)
         }
         if(ringStep == RingStep::Entering||ringStep == RingStep::Inside){
             for (int i = track.widthBlock.size(); i >1; i--){
-                if(track.widthBlock[i].y-track.widthBlock[i+1].y>150&&track.widthBlock[i].y>COLSIMAGE*0.65&&
-                track.widthBlock[i+1].y<COLSIMAGE*0.5&&track.widthBlock[i].x<360&&track.widthBlock[i].x>100&&rightpoint==false){
+                if(track.widthBlock[i].y-track.widthBlock[i+1].y>100&&track.widthBlock[i].y>COLSIMAGE*0.65&&
+                track.widthBlock[i+1].y<COLSIMAGE*0.5&&track.widthBlock[i].x<330&&track.widthBlock[i].x>150&&rightpoint==false){
                     std::cout<<"环补线找到"<<std::endl;
-                    withi2=track.widthBlock[i].x;
+                    withi2=i;
                     ringStep = RingStep::Inside;
                     ringcircle=true;
                     break;
                 }
                 if( i < 3 && ringcircle==true){
                     count++;
-                    if(count>32){
+                    if(count>20){
                         ringStep = RingStep::Circle;
                     }
                 }
             }
         }
-        if(ringStep == RingStep::Inside){
-            if(ringType== RingType::RingRight){
+        if(ringStep == RingStep::Inside||ringStep == RingStep::Circle){
+            bool line=false;
+            if(ringStep == RingStep::Circle){
+                if(track.pointsEdgeLeft.size()<10||track.pointsEdgeRight.size()<10){
+                    line=true;
+                    std::cout<<"缺";
+                }
+            }
+            if(ringType== RingType::RingRight&&(ringStep == RingStep::Inside)||(line==true&&ringStep == RingStep::Circle)){
                 std::cout<<"布线"<<std::endl;
                 for (int i = 0; i < COLSIMAGE; i++)
                 {
                     circle(imagePath, Point(i,withi2), 2,
                         Scalar(0, 0, 255), -1); // 红色点
                 }
-                int n=track.pointsEdgeRight.size();
-                int x= track.pointsEdgeRight[n-withi2].x-30;
+                int x= track.pointsEdgeRight[withi2].x-30;
                 int y= COLSIMAGE/2;
                 POINT startPoint=track.pointsEdgeLeft[0];
                 for(int i=COLSIMAGE;i>COLSIMAGE*0.8;i--){
@@ -201,7 +252,7 @@ public:
                         break;
                 }
                 POINT midPoint(x, y);                                            // 补线：中点
-                POINT endPoint(withi2-10,COLSIMAGE);                          // 补线：终点
+                POINT endPoint(track.pointsEdgeLeft[withi2-10].x,COLSIMAGE);                          // 补线：终点
 
                 vector<POINT> input = {startPoint, midPoint, endPoint};
                 vector<POINT> b_modify = Bezier(0.01, input);
@@ -212,15 +263,14 @@ public:
                     track.pointsEdgeLeft[kk]=b_modify[kk];
                 }
             }
-            if(ringType== RingType::RingLeft){
+            if(ringType== RingType::RingLeft&&(ringStep == RingStep::Inside)||(line==true&&ringStep == RingStep::Circle)){
                 std::cout<<"布线"<<std::endl;
                 for (int i = 0; i < COLSIMAGE; i++)
                 {
                     circle(imagePath, Point(i,withi2), 2,
                         Scalar(0, 0, 255), -1); // 红色点
                 }
-                int n= track.pointsEdgeLeft.size();
-                int x= track.pointsEdgeLeft[n-withi2].x-30;
+                int x= track.pointsEdgeLeft[withi2].x-30;
                 int y= COLSIMAGE/2;
                 POINT startPoint=track.pointsEdgeRight[0];
                 for(int i=COLSIMAGE;i>COLSIMAGE*0.8;i--){
@@ -229,7 +279,7 @@ public:
                         break;
                 }
                 POINT midPoint(x, y);                                            // 补线：中点
-                POINT endPoint(withi2-10,0);                          // 补线：终点
+                POINT endPoint( track.pointsEdgeLeft[withi2-10].x,0);                          // 补线：终点
 
                 vector<POINT> input = {startPoint, midPoint, endPoint};
                 vector<POINT> b_modify = Bezier(0.01, input);
@@ -242,22 +292,30 @@ public:
             }
         }
         if(ringStep == RingStep::Circle || ringStep == RingStep::Exiting){
-            for(int i=1;i<track.widthBlock.size();i++){
-                if(track.widthBlock[i].y<track.widthBlock[i-3].y&&track.widthBlock[i].y<track.widthBlock[i+3].y){
+            bool exit=false;
+            int withi3=0;
+            for(int i=30;i<track.widthBlock.size();i++){
+                if(track.widthBlock[i].y<track.widthBlock[i-2].y&&track.widthBlock[i].y<track.widthBlock[i+2].y){
                     if(i<track.widthBlock.size()-10){
-                        withi2=track.widthBlock[i].x;
+                        if((track.pointsEdgeLeft[i].y>track.pointsEdgeLeft[i+5].y&&track.pointsEdgeLeft[i].y>track.pointsEdgeLeft[i-5].y)||
+                        (track.pointsEdgeRight[i].y<track.pointsEdgeRight[i+5].y&&track.pointsEdgeRight[i].y<track.pointsEdgeRight[i-5].y)){
+                        exit=true;
+                        withi3=i;
                         break;
+                        }
                     }
                 }
             }
-            if(ringType == RingType::RingRight){
-                if((track.pointsEdgeLeft.size()> ROWSIMAGE*0.6&& withi2 <ROWSIMAGE*0.85&&withi2 >ROWSIMAGE*0.4)||(finish<9&&ringStep == RingStep::Exiting)){
-                    k++;
+            if(withi3<track.widthBlock.size()-30){
+                withi2=withi3;
+                ringStep = RingStep::Exiting;
+            }
+            if(ringType == RingType::RingRight&&exit==true){
                     std::cout<<"出环岛"<<withi2<<std::endl;
                     for (int i = 0; i < COLSIMAGE; i++)
                         {
                             circle(imagePath, Point(i,withi2), 2,
-                                Scalar(0, 0, 255), -1); // 红色点
+                                Scalar(0, 0, 0), -1); // 红色点
                         }
                     int x= track.pointsEdgeLeft[withi2+5].x;
                     int y= track.pointsEdgeLeft[withi2+5].y;
@@ -280,10 +338,8 @@ public:
                         track.pointsEdgeLeft[kk]=b_modify[kk];
                     }
                 }
-            }
-            if(ringType == RingType::RingLeft){
-                if((track.pointsEdgeRight.size()> ROWSIMAGE*0.6&& withi2 <ROWSIMAGE*0.85&&withi2 >ROWSIMAGE*0.4)||(finish<9&&ringStep == RingStep::Exiting)){
-                    k++;
+
+            if(ringType == RingType::RingLeft&&exit==true){
                     std::cout<<"出环岛"<<withi2<<std::endl;
                     for (int i = 0; i < COLSIMAGE; i++)
                         {
@@ -311,19 +367,13 @@ public:
                     {
                         track.pointsEdgeRight[kk]=b_modify[kk];
                     }
-                }
             }
-                if(k>5){
-                    for(int i=track.widthBlock.size();track.widthBlock[i].x>ROWSIMAGE*0.6;i++){
-                        if(track.widthBlock[i].x-track.widthBlock[i-2].x>30)
-                            ringStep = RingStep::Exiting;
-                    }
-                }
         }
         if(ringStep == RingStep::Exiting){
-            finish++;
+            if((ringType == RingType::RingRight&&track.stdevLeft<30)||(ringType == RingType::RingLeft&&track.stdevRight<30))
+               finish++;
             std::cout<<"没出";
-            if(finish>35){
+            if(finish>50){
                 ringStep = RingStep::None;
                 reset();
             }
@@ -333,7 +383,7 @@ public:
             return false;
         else
             return true;
-    }
+    };
 
     /**
      * @brief 绘制环岛识别图像
