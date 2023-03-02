@@ -58,6 +58,8 @@ public:
      */
     struct Params
     {
+        float up_speed=0;
+        float down_speed=0;
         float speedLow = 0.8;                              // 智能车最低速
         float speedHigh = 0.8;                             // 智能车最高速
         float speedBridge = 0.6;                           // 坡道速度
@@ -88,7 +90,7 @@ public:
         float score = 0.5;                                 // AI检测置信度
         string model = "../res/model/yolov3_mobilenet_v1"; // 模型路径
         string video = "../res/samples/sample.mp4";          // 视频路径
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Params, speedLow, speedHigh, speedBridge, speedDown, runP1, runP2, runP3,runP4,
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Params,up_speed,down_speed, speedLow, speedHigh, speedBridge, speedDown, runP1, runP2, runP3,runP4,
                                        runP,prospect,turnD1,turnD2,turnD3, turnD, debug, saveImg, rowCutUp, rowCutBottom, bridge, danger,
                                        rescue, racing, parking, debug_fps,debug_uart,ring, cross, score, model, video); // 添加构造函数
     };
@@ -236,5 +238,17 @@ public:
 
         errors.clear();  // 清空误差列表以便重新收集数据
     }
+    void speed_control(float target_speed,float real_speed){
+        if(target_speed==params.speedHigh){
+            if(transform_speed>0){
+                real_speed=params.up_speed*up_speed;
+            }
+            else{
+                real_speed=params.up_speed;
+            }
+        }
+        else{
 
+        }
+    }
 };

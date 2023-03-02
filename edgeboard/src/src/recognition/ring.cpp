@@ -78,21 +78,27 @@ public:
         int with=0;
         bool rightpoint=false;
         //从下往上搜索
-        for (int i = 1; i < track.widthBlock.size(); ++i)
+        for (int i = 1; i < track.widthBlock.size()*2/3; ++i)
         {   
             //std::cout<<"\tle:"<<track.stdevLeft<<"\tri:"<<track.stdevRight<<std::endl;
             //上行宽度大于下行，并且宽度大于图像列宽0.6并且行大于30，左点集标准差大于120，右点集标准差小于50，判断赛道平直程度
-            if (track.widthBlock[i].y - track.widthBlock[i-1].y>30&&
+            if (track.widthBlock[i].y - track.widthBlock[i-2].y>30&&
             ((track.stdevLeft>170 &&track.stdevRight<30)||(track.stdevRight>150&&track.stdevLeft<40))&&(ringStep == RingStep::None||ringStep == RingStep::Entering)) // 搜索突然变宽的路径行数
             {
-                if(track.pointsEdgeRight[i].y>track.pointsEdgeRight[i-1].y){
+                if(track.pointsEdgeRight[i].y>track.pointsEdgeRight[i-1].y||track.pointsEdgeLeft[i].y<track.pointsEdgeLeft[i-1].y){
                     std::cout<<"进去了"<<std::endl;
                     count=0;
                     rightpoint=true;
                     withi1=i;
                     countWide++;
-                    for(int ii = withi1; ii < track.widthBlock.size(); ii++){        //从找到角点下往上搜索最小点
-                        if(track.pointsEdgeRight[ii+1].y<track.pointsEdgeRight[ii-10].y&&track.pointsEdgeRight[ii].y<track.pointsEdgeRight[ii+10].y){
+                    for (int i = 0; i < COLSIMAGE; i++)
+                    {
+                        circle(imagePath, Point(i,track.widthBlock[withi1].x), 2,
+                            Scalar(255, 255, 255), -1); // 红色点
+                    }
+                    for(int ii = withi1+1; ii < track.widthBlock.size(); ii++){        //从找到角点下往上搜索最小点
+                        if((track.pointsEdgeRight[ii+1].y<track.pointsEdgeRight[ii-10].y&&track.pointsEdgeRight[ii].y<track.pointsEdgeRight[ii+10].y)||
+                        (track.pointsEdgeLeft[ii+1].y>track.pointsEdgeLeft[ii-10].y&&track.pointsEdgeLeft[ii].y>track.pointsEdgeLeft[ii+10].y)){
                             ringStep = RingStep::Entering;
                             withi2=ii;
                             break;
@@ -131,8 +137,8 @@ public:
             }
             if(ringType==RingType::RingRight&&ringStep == RingStep::None){
                 std::cout<<"进去补1线"<<std::endl;
-                float k=(float)(track.pointsEdgeRight[0].y-track.pointsEdgeRight[withi1 - 5].y)/(float)(track.pointsEdgeRight[0].x-track.pointsEdgeRight[withi1 - 5].x);
-                for(int n=withi1-5;n<track.pointsEdgeRight.size();n++){
+                float k=(float)(track.pointsEdgeRight[0].y-track.pointsEdgeRight[withi1 - 10].y)/(float)(track.pointsEdgeRight[0].x-track.pointsEdgeRight[withi1 - 10].x);
+                for(int n=withi1-10;n<track.pointsEdgeRight.size();n++){
                     track.pointsEdgeRight[n].y=(int)(track.pointsEdgeRight[withi1-11].y-k*(n-withi1+10));           //进环前补线
                 }
             }
@@ -145,8 +151,8 @@ public:
             }
             if(ringType==RingType::RingLeft&&ringStep == RingStep::None){
                 std::cout<<"进去补1线"<<std::endl;
-                float k=(float)(track.pointsEdgeLeft[0].y-track.pointsEdgeLeft[withi1 - 5].y)/(float)(track.pointsEdgeLeft[0].x-track.pointsEdgeLeft[withi1 - 5].x);
-                for(int n=withi1-5;n<track.pointsEdgeLeft.size();n++){
+                float k=(float)(track.pointsEdgeLeft[0].y-track.pointsEdgeLeft[withi1 - 10].y)/(float)(track.pointsEdgeLeft[0].x-track.pointsEdgeLeft[withi1 - 10].x);
+                for(int n=withi1-10;n<track.pointsEdgeLeft.size();n++){
                     track.pointsEdgeLeft[n].y=(int)(track.pointsEdgeLeft[withi1-11].y-k*(n-withi1+10));           //进环前补线
                 }
             }
@@ -161,8 +167,8 @@ public:
         }
         if(ringStep == RingStep::Entering||ringStep == RingStep::Inside){
             for (int i = track.widthBlock.size(); i >1; i--){
-                if(track.widthBlock[i].y-track.widthBlock[i+1].y>100&&track.widthBlock[i].y>COLSIMAGE*0.65&&
-                track.widthBlock[i+1].y<COLSIMAGE*0.5&&track.widthBlock[i].x<150&&rightpoint==false){
+                if(track.widthBlock[i].y-track.widthBlock[i+1].y>150&&track.widthBlock[i].y>COLSIMAGE*0.65&&
+                track.widthBlock[i+1].y<COLSIMAGE*0.5&&track.widthBlock[i].x<360&&track.widthBlock[i].x>100&&rightpoint==false){
                     std::cout<<"环补线找到"<<std::endl;
                     withi2=track.widthBlock[i].x;
                     ringStep = RingStep::Inside;
@@ -186,8 +192,8 @@ public:
                         Scalar(0, 0, 255), -1); // 红色点
                 }
                 int n=track.pointsEdgeRight.size();
-                int x= track.pointsEdgeRight[n-withi2].x*1.2;
-                int y= track.pointsEdgeRight[n-withi2].y*0.8;
+                int x= track.pointsEdgeRight[n-withi2].x-30;
+                int y= COLSIMAGE/2;
                 POINT startPoint=track.pointsEdgeLeft[0];
                 for(int i=COLSIMAGE;i>COLSIMAGE*0.8;i--){
                     startPoint = track.pointsEdgeLeft[COLSIMAGE-i];
@@ -195,7 +201,7 @@ public:
                         break;
                 }
                 POINT midPoint(x, y);                                            // 补线：中点
-                POINT endPoint(withi2-10,track.pointsEdgeRight[withi2-10].y);                          // 补线：终点
+                POINT endPoint(withi2-10,COLSIMAGE);                          // 补线：终点
 
                 vector<POINT> input = {startPoint, midPoint, endPoint};
                 vector<POINT> b_modify = Bezier(0.01, input);
@@ -214,8 +220,8 @@ public:
                         Scalar(0, 0, 255), -1); // 红色点
                 }
                 int n= track.pointsEdgeLeft.size();
-                int x= track.pointsEdgeLeft[n-withi2].x*0.8;
-                int y= track.pointsEdgeLeft[n-withi2].y*0.12;
+                int x= track.pointsEdgeLeft[n-withi2].x-30;
+                int y= COLSIMAGE/2;
                 POINT startPoint=track.pointsEdgeRight[0];
                 for(int i=COLSIMAGE;i>COLSIMAGE*0.8;i--){
                     startPoint = track.pointsEdgeRight[COLSIMAGE-i];
@@ -223,7 +229,7 @@ public:
                         break;
                 }
                 POINT midPoint(x, y);                                            // 补线：中点
-                POINT endPoint(withi2-10,track.pointsEdgeRight[withi2-10].y);                          // 补线：终点
+                POINT endPoint(withi2-10,0);                          // 补线：终点
 
                 vector<POINT> input = {startPoint, midPoint, endPoint};
                 vector<POINT> b_modify = Bezier(0.01, input);
@@ -238,12 +244,14 @@ public:
         if(ringStep == RingStep::Circle || ringStep == RingStep::Exiting){
             for(int i=1;i<track.widthBlock.size();i++){
                 if(track.widthBlock[i].y<track.widthBlock[i-3].y&&track.widthBlock[i].y<track.widthBlock[i+3].y){
-                    withi2=track.widthBlock[i].x;
-                    break;
+                    if(i<track.widthBlock.size()-10){
+                        withi2=track.widthBlock[i].x;
+                        break;
+                    }
                 }
             }
             if(ringType == RingType::RingRight){
-                if((track.pointsEdgeLeft.size()> ROWSIMAGE*0.6&& withi2 <ROWSIMAGE*0.85&&withi2 >ROWSIMAGE*0.4)||(finish<3&&ringStep == RingStep::Exiting)){
+                if((track.pointsEdgeLeft.size()> ROWSIMAGE*0.6&& withi2 <ROWSIMAGE*0.85&&withi2 >ROWSIMAGE*0.4)||(finish<9&&ringStep == RingStep::Exiting)){
                     k++;
                     std::cout<<"出环岛"<<withi2<<std::endl;
                     for (int i = 0; i < COLSIMAGE; i++)
@@ -274,7 +282,7 @@ public:
                 }
             }
             if(ringType == RingType::RingLeft){
-                if(track.pointsEdgeRight.size()> ROWSIMAGE*0.6&& withi2 <ROWSIMAGE*0.85&&withi2 >ROWSIMAGE*0.4){
+                if((track.pointsEdgeRight.size()> ROWSIMAGE*0.6&& withi2 <ROWSIMAGE*0.85&&withi2 >ROWSIMAGE*0.4)||(finish<9&&ringStep == RingStep::Exiting)){
                     k++;
                     std::cout<<"出环岛"<<withi2<<std::endl;
                     for (int i = 0; i < COLSIMAGE; i++)
@@ -283,15 +291,15 @@ public:
                                 Scalar(0, 0, 255), -1); // 红色点
                         }
                     int n= track.pointsEdgeRight.size();
-                    int x= track.pointsEdgeRight[n-withi2].x*0.8;
-                    int y= track.pointsEdgeRight[n-withi2].y*0.8;
+                    int x= track.pointsEdgeRight[n-withi2].x;
+                    int y= track.pointsEdgeRight[n-withi2].y;
                     POINT startPoint=track.pointsEdgeRight[0];
                     POINT midPoint(x, y);                                            // 补线：中点
                     POINT endPoint = track.pointsEdgeLeft[withi2-1];
                     for(int ii=0;ii<track.pointsEdgeLeft.size();ii++){
-                        if(track.pointsEdgeLeft[ii].y<COLSIMAGE){
+                        if(track.pointsEdgeLeft[ii].y>0){
                             endPoint.x=track.pointsEdgeLeft[ii].x;
-                            endPoint.y=640;
+                            endPoint.y=0;
                             break;
                         }
                     }                        // 补线：终点
@@ -301,11 +309,11 @@ public:
                     track.pointsEdgeRight.resize( b_modify.size());
                     for (int kk = 1; kk < b_modify.size(); ++kk)
                     {
-                        track.pointsEdgeLeft[kk]=b_modify[kk];
+                        track.pointsEdgeRight[kk]=b_modify[kk];
                     }
                 }
             }
-                if(k>10){
+                if(k>5){
                     for(int i=track.widthBlock.size();track.widthBlock[i].x>ROWSIMAGE*0.6;i++){
                         if(track.widthBlock[i].x-track.widthBlock[i-2].x>30)
                             ringStep = RingStep::Exiting;
@@ -314,6 +322,7 @@ public:
         }
         if(ringStep == RingStep::Exiting){
             finish++;
+            std::cout<<"没出";
             if(finish>35){
                 ringStep = RingStep::None;
                 reset();

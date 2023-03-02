@@ -75,6 +75,7 @@ public:
    * @param detection AI检测结果
    */
   bool process(Tracking &track, vector<PredictResult> predict) {
+    std::cout<<step<<std::endl;
     _pointNearCone = POINT(0, 0);
     _distance = 0;
     pointConeLeft.clear();
@@ -129,7 +130,7 @@ public:
     case Step::Enable: //[02] 使能
     {
       counterExit++;
-      if (counterExit > 150) // 超时退出
+      if (counterExit > 300) // 超时退出
       {
         reset();
         return false;
@@ -141,7 +142,7 @@ public:
         _pointNearCone = getConeLeftDown(track.pointsEdgeLeft,
                                          pointConeLeft); // 搜索右下锥桶
         if (_pointNearCone.x >
-            ROWSIMAGE * 0.4) // 当车辆开始靠近右边锥桶：准备入库
+            ROWSIMAGE * 0.3) // 当车辆开始靠近右边锥桶：准备入库
         {
           counterRec++;
           if (counterRec >= 2) {
@@ -178,7 +179,7 @@ public:
         if (track.pointsEdgeLeft.size() > ROWSIMAGE / 2 &&
             track.pointsEdgeRight.size() > ROWSIMAGE / 2) {
           counterExit++;
-          if (counterExit > 30) {
+          if (counterExit > 75) {
             counterExit = 0;
             step = Step::Stop; // 停车使能
             counterRec = 0;

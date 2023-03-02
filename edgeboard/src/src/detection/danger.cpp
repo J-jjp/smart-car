@@ -59,7 +59,7 @@ public:
         {
             if(predict[i].type == LABEL_BOMB  && (predict[i].y + predict[i].height) > ROWSIMAGE * 0.3)
                 enable=true;
-            if ((predict[i].type == LABEL_CONE || predict[i].type == LABEL_BLOCK) && (predict[i].y + predict[i].height) > ROWSIMAGE * 0.2) // AI标志距离计算
+            if ((predict[i].type == LABEL_CONE || predict[i].type == LABEL_BLOCK) && (predict[i].y + predict[i].height) > ROWSIMAGE * 0.4) // AI标志距离计算
                 resultsObs.push_back(predict[i]);
         }
 
@@ -100,8 +100,8 @@ public:
             {
                 vector<POINT> points(4); // 三阶贝塞尔曲线
                 points[0] = track.pointsEdgeLeft[row / 2];
-                points[1] = {resultsObs[index].y + resultsObs[index].height, resultsObs[index].x + resultsObs[index].width};
-                points[2] = {(resultsObs[index].y + resultsObs[index].height + resultsObs[index].y) / 2, resultsObs[index].x + resultsObs[index].width};
+                points[1] = {resultsObs[index].y + resultsObs[index].height, resultsObs[index].x + resultsObs[index].width*2};
+                points[2] = {(resultsObs[index].y + resultsObs[index].height + resultsObs[index].y) / 2, resultsObs[index].x + resultsObs[index].width*2};
                 if (resultsObs[index].y > track.pointsEdgeLeft[track.pointsEdgeLeft.size() - 1].x)
                     points[3] = track.pointsEdgeLeft[track.pointsEdgeLeft.size() - 1];
                 else
@@ -119,14 +119,14 @@ public:
         {
             if (resultsObs[index].type == LABEL_BLOCK) // 黑色路障特殊处理
             {
-                curtailTracking(track, true); // 缩减优化车道线（双车道→单车道）
+                curtailTracking(track, false); // 缩减优化车道线（双车道→单车道）
             }
             else
             {
                 vector<POINT> points(4); // 三阶贝塞尔曲线
                 points[0] = track.pointsEdgeRight[row / 2];
-                points[1] = {resultsObs[index].y + resultsObs[index].height, resultsObs[index].x - resultsObs[index].width};
-                points[2] = {(resultsObs[index].y + resultsObs[index].height + resultsObs[index].y) / 2, resultsObs[index].x - resultsObs[index].width};
+                points[1] = {resultsObs[index].y + resultsObs[index].height, resultsObs[index].x - resultsObs[index].width*2};
+                points[2] = {(resultsObs[index].y + resultsObs[index].height + resultsObs[index].y) / 2, resultsObs[index].x - resultsObs[index].width*2};
                 if (resultsObs[index].y > track.pointsEdgeRight[track.pointsEdgeRight.size() - 1].x)
                     points[3] = track.pointsEdgeRight[track.pointsEdgeRight.size() - 1];
                 else

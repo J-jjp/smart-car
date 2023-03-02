@@ -19,7 +19,22 @@ public:
     uint16_t validRowsLeft = 0;  // 边缘有效行数（左）
     uint16_t validRowsRight = 0; // 边缘有效行数（右）
     double sigmaCenter = 0;      // 中心点集的方差
-    int rowspeed=ROWSIMAGE/6;
+    std::vector<int> findFirstIndices(const std::vector<POINT>& arr,int rowsFromBottom) {  
+        vector<int> thresholds={(ROWSIMAGE-rowsFromBottom)/2,ROWSIMAGE-rowsFromBottom,ROWSIMAGE*7/6-rowsFromBottom,
+        ROWSIMAGE-rowsFromBottom+ROWSIMAGE/3,ROWSIMAGE-rowsFromBottom+ROWSIMAGE/3+(470 -(ROWSIMAGE-rowsFromBottom+ROWSIMAGE/3))/3,
+        ROWSIMAGE-rowsFromBottom+ROWSIMAGE/3+(470-(ROWSIMAGE-rowsFromBottom+ROWSIMAGE/3))*2/3}; 
+        std::vector<int> indices(thresholds.size(),arr.size() ); // 初始化索引为最大值
+        int n = arr.size();
+        for (size_t j = 0; j < thresholds.size(); ++j) {  
+            for (int i = 0; i < n; ++i) {  
+                if (arr[i].x < thresholds[j] && indices[j] == arr.size()) {  
+                    indices[j] = i; // 更新索引  
+                    break; // 找到后，跳出内层循环  
+                }  
+            }  
+        }  
+        return indices;  
+    }  
     /**
      * @brief 控制中心计算
      *
@@ -27,34 +42,73 @@ public:
      * @param pointsEdgeRight 赛道右边缘点集
      */
 
-    void fitting(Tracking &track,float prospect)
+    void fitting(Tracking &track,float prospect, Mat &imagePath,int scene)
     {
+        int rowsFromBottom=ROWSIMAGE*prospect;
         sigmaCenter = 0;
         controlCenter = COLSIMAGE / 2;
         centerEdge.clear();
         vector<POINT> v_center(4); // 三阶贝塞尔曲线
         style = "STRIGHT";
-
+        vector<int> left_indices;
+        vector<int> right_indices;
         // 边缘斜率重计算（边缘修正之后）
         track.stdevLeft = track.stdevEdgeCal(track.pointsEdgeLeft, ROWSIMAGE);
         track.stdevRight = track.stdevEdgeCal(track.pointsEdgeRight, ROWSIMAGE);
-
+        left_indices=findFirstIndices(track.pointsEdgeLeft,rowsFromBottom);
+        // for(int ii=0;ii<1;ii++){
+        //     for (int i = 0; i < COLSIMAGE; i++)
+        //     {
+        //         circle(imagePath, Point(i,track.pointsEdgeLeft[left_indices[ii]].x), 2,
+        //             Scalar(255, 255, 255), -1); // 红色点
+        //     }
+        // }
+        right_indices=findFirstIndices(track.pointsEdgeRight,rowsFromBottom);
+        // for(int ii=0;ii<3;ii++){
+        //     for (int i = 0; i < COLSIMAGE; i++)
+        //     {
+        //         circle(imagePath, Point(i,track.pointsEdgeRight[right_indices[ii]].x), 2,
+        //             Scalar(0, 0, 0), -1); // 红色点
+        //     }
+        // }
         if (track.pointsEdgeLeft.size() > 4 && track.pointsEdgeRight.size() > 4) // 通过双边缘有效点的差来判断赛道类型
         {
+            //std::cout<<left_indices[3]<<"左"<<left_indices[4] <<"右"<<left_indices[5];
             //中心点
-            v_center[0] = {(track.pointsEdgeLeft[0].x + track.pointsEdgeRight[0].x) / 2, (track.pointsEdgeLeft[0].y + track.pointsEdgeRight[0].y) / 2};
+            if(scene==2){
+                v_center[0] = {(track.pointsEdgeLeft[0].x + track.pointsEdgeRight[0].x) / 2, (track.pointsEdgeLeft[0].y + track.pointsEdgeRight[0].y) / 2};
 
-            v_center[1] = {(track.pointsEdgeLeft[track.pointsEdgeLeft.size() / 3].x + track.pointsEdgeRight[track.pointsEdgeRight.size() / 3].x) / 2,
+                v_center[1] = {(track.pointsEdgeLeft[track.pointsEdgeLeft.size() / 3].x + track.pointsEdgeRight[track.pointsEdgeRight.size() / 3].x) / 2,
                            (track.pointsEdgeLeft[track.pointsEdgeLeft.size() / 3].y + track.pointsEdgeRight[track.pointsEdgeRight.size() / 3].y) / 2};
 
-            v_center[2] = {(track.pointsEdgeLeft[track.pointsEdgeLeft.size() * 2 / 3].x + track.pointsEdgeRight[track.pointsEdgeRight.size() * 2 / 3].x) / 2,
+                v_center[2] = {(track.pointsEdgeLeft[track.pointsEdgeLeft.size() * 2 / 3].x + track.pointsEdgeRight[track.pointsEdgeRight.size() * 2 / 3].x) / 2,
                            (track.pointsEdgeLeft[track.pointsEdgeLeft.size() * 2 / 3].y + track.pointsEdgeRight[track.pointsEdgeRight.size() * 2 / 3].y) / 2};
 
-            v_center[3] = {(track.pointsEdgeLeft[track.pointsEdgeLeft.size() - 1].x + track.pointsEdgeRight[track.pointsEdgeRight.size() - 1].x) / 2,
+                v_center[3] = {(track.pointsEdgeLeft[track.pointsEdgeLeft.size() - 1].x + track.pointsEdgeRight[track.pointsEdgeRight.size() - 1].x) / 2,
+                           (track.pointsEdgeLeft[track.pointsEdgeLeft.size() - 1].y + track.pointsEdgeRight[track.pointsEdgeRight.size() - 1].y) / 2};
+                           
+                centerEdge = Bezier(0.03, v_center);
+            }
+            else{
+            vector<POINT> v_center1(8); 
+            v_center1[0] = {(track.pointsEdgeLeft[0].x + track.pointsEdgeRight[0].x) / 2, (track.pointsEdgeLeft[0].y + track.pointsEdgeRight[0].y) / 2};
+            v_center1[1] = {(track.pointsEdgeLeft[left_indices[5]].x + track.pointsEdgeRight[right_indices[5]].x) / 2,
+                           (track.pointsEdgeLeft[left_indices[5]].y + track.pointsEdgeRight[right_indices[5]].y) / 2};
+            v_center1[2] = {(track.pointsEdgeLeft[left_indices[4]].x + track.pointsEdgeRight[right_indices[4]].x) / 2,
+                           (track.pointsEdgeLeft[left_indices[4]].y + track.pointsEdgeRight[right_indices[4]].y) / 2};
+            v_center1[3] = {(track.pointsEdgeLeft[left_indices[3]].x + track.pointsEdgeRight[right_indices[3]].x) / 2,
+                           (track.pointsEdgeLeft[left_indices[3]].y + track.pointsEdgeRight[right_indices[3]].y) / 2};
+            v_center1[4] = {(track.pointsEdgeLeft[left_indices[2]].x + track.pointsEdgeRight[right_indices[2]].x) / 2,
+                           (track.pointsEdgeLeft[left_indices[2]].y + track.pointsEdgeRight[right_indices[2]].y) / 2};
+            v_center1[5] = {(track.pointsEdgeLeft[left_indices[1]].x + track.pointsEdgeRight[right_indices[1]].x) / 2, 
+                           (track.pointsEdgeLeft[left_indices[1]].y + track.pointsEdgeRight[right_indices[1]].y) / 2};
+            v_center1[6] = {(track.pointsEdgeLeft[left_indices[0]].x + track.pointsEdgeRight[right_indices[0]].x) / 2,
+                           (track.pointsEdgeLeft[left_indices[0]].y + track.pointsEdgeRight[right_indices[0]].y) / 2};
+            v_center1[7] = {(track.pointsEdgeLeft[track.pointsEdgeLeft.size() - 1].x + track.pointsEdgeRight[track.pointsEdgeRight.size() - 1].x) / 2,
                            (track.pointsEdgeLeft[track.pointsEdgeLeft.size() - 1].y + track.pointsEdgeRight[track.pointsEdgeRight.size() - 1].y) / 2};
 
-            centerEdge = Bezier(0.03, v_center);//贝塞尔曲线对中心点进行拟合
-
+            centerEdge = Bezier(0.03, v_center1);//贝塞尔曲线对中心点进行拟合
+            }
             style = "STRIGHT";
         }
             // 左单边
@@ -105,19 +159,41 @@ public:
 
             style = "LEFT";
         }
-        int rowsFromBottom=ROWSIMAGE*prospect;
+
+        // 加权控制中心计算
         int controlNum=1;
-        for(auto p : centerEdge){
-            if(p.x<rowsFromBottom && p.x>rowsFromBottom-ROWSIMAGE/6){
-                if (p.x < rowsFromBottom-ROWSIMAGE/12)
+            for (int i = 0; i < COLSIMAGE; i++)
                 {
-                    controlNum += rowsFromBottom-ROWSIMAGE /12;
-                    controlCenter += p.y * rowsFromBottom-ROWSIMAGE /12;
+                    circle(imagePath, Point(i,rowsFromBottom), 2,
+                        Scalar(0, 0, 255), -1); // 红色点
+                    circle(imagePath, Point(i,rowsFromBottom-ROWSIMAGE/6), 2,
+                        Scalar(0, 255, 0), -1); // 红色点
+                }
+            for (int i = 0; i < centerEdge.size(); i++)
+                {
+                    circle(imagePath, Point(centerEdge[i].y,centerEdge[i].x), 2,
+                        Scalar(255, 0, 255), -1); // 红色点
+                }
+        if(scene==2){
+            for (auto p : centerEdge)
+            {
+                if (p.x < ROWSIMAGE / 2)
+                {
+                    controlNum += ROWSIMAGE / 2;
+                    controlCenter += p.y * ROWSIMAGE / 2;
                 }
                 else
                 {
-                    controlNum += (rowsFromBottom-ROWSIMAGE/12 - p.x);
-                    controlCenter += p.y * (rowsFromBottom-ROWSIMAGE/12 - p.x);
+                    controlNum += (ROWSIMAGE - p.x);
+                    controlCenter += p.y * (ROWSIMAGE - p.x);
+                }
+            }
+        }
+        else{
+            for(auto p : centerEdge){
+                if(p.x<rowsFromBottom && p.x>rowsFromBottom-ROWSIMAGE/6){
+                    controlNum++; // 增加计数  
+                    controlCenter += p.y;
                 }
             }
         }
@@ -130,6 +206,7 @@ public:
         else if (controlCenter < 0)
             controlCenter = 0;
                 // 控制率计算
+        std::cout<<"中线"<<centerEdge[1].y<<std::endl;
         if (centerEdge.size() > 20)
         {
             vector<POINT> centerV;

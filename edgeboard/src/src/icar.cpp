@@ -234,16 +234,16 @@ int main(int argc, char const *argv[]) {
     }
   //elements(tracking);
     //[12] 车辆控制中心拟合
-    ctrlCenter.fitting(tracking,motion.params.prospect);
-    if (scene != Scene::RescueScene) {
-      if (ctrlCenter.derailmentCheck(tracking)) // 车辆冲出赛道检测（保护车辆）
-      {
-        uart->carControl(0, PWMSERVOMID); // 控制车辆停止运动
-        sleep(1);
-        printf("-----> System Exit!!! <-----\n");
-        exit(0); // 程序退出
-      }
-    }
+    ctrlCenter.fitting(tracking,motion.params.prospect,imgCorrect,scene);
+    // if (scene != Scene::RescueScene) {
+    //   if (ctrlCenter.derailmentCheck(tracking)) // 车辆冲出赛道检测（保护车辆）
+    //   {
+    //     uart->carControl(0, PWMSERVOMID); // 控制车辆停止运动
+    //     sleep(1);
+    //     printf("-----> System Exit!!! <-----\n");
+    //     exit(0); // 程序退出
+    //   }
+    // }
     //[13] 车辆运动控制(速度+方向)
       //std::cout<<"2"<<std::endl;
       //std::cout<<abs(ctrlCenter.sigmaCenter);
@@ -263,9 +263,9 @@ int main(int argc, char const *argv[]) {
     // start_uart=true;
     // mut.unlock();
     uart->carControl(motion.speed, motion.servoPwm); // 串口通信控制车辆
-    if(motion.speed == -motion.params.speedDown){
-      waitKey(10);
-    }
+    // if(motion.speed == -motion.params.speedDown){
+    //   waitKey(10);
+    // }
     //std::cout<<motion.speed<<"\t";
     //[15] 状态复位
     // if (sceneLast != scene) {
@@ -343,7 +343,8 @@ int main(int argc, char const *argv[]) {
       display.show(); // 显示综合绘图
       waitKey(10);    // 等待显示
     }
-          ctrlCenter.drawImage(tracking,
+    detection->drawBox(imgCorrect); 
+    ctrlCenter.drawImage(tracking,
                            imgCorrect); // 图像绘制路径计算结果（控制中心
     //std::cout<<scene<<std::endl;
     sceneLast = scene; // 记录当前状态

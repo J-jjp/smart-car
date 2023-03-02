@@ -136,7 +136,7 @@ public:
      */
     void inference(cv::Mat img)
     {
-        auto feeds = preproccess(img, {320, 320}); // 图像前处理
+        auto feeds = preprocess(img, {320, 320}); // 图像前处理
         run(*feeds);                              // 模型推理
         render();                                 // 后处理
     }

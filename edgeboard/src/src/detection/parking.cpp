@@ -101,7 +101,7 @@ public:
             if (countRec) // 识别AI标志后开始场次计数
                 countSes++;
 
-            if (countSes >= 8)
+            if (countSes >= 4)
             {
                 if (countRec >= 4)
                 {
